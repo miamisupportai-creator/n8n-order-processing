@@ -1,0 +1,210 @@
+{
+  "name": "Order Processing — ${CLIENT_NAME}",
+  "nodes": [
+    {
+      "id": "webhook-1",
+      "name": "Order Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "path": "order-${CLIENT_ID}",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "code-1",
+      "name": "Validate Order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst errors = [];\nif (!body.customer_email) errors.push(\"Missing customer_email\");\nif (!body.items || body.items.length === 0) errors.push(\"No items in order\");\nif (!body.total || body.total <= 0) errors.push(\"Invalid total\");\nconst order = {\n  orderId: body.order_id || \"ORD-\" + Date.now(),\n  customerEmail: body.customer_email || \"${CLIENT_EMAIL}\",\n  customerName: body.customer_name || \"${CLIENT_NAME} Customer\",\n  customerPhone: body.customer_phone || \"${CLIENT_PHONE}\",\n  items: body.items || [],\n  total: body.total || 0,\n  clientId: \"${CLIENT_ID}\",\n  clientName: \"${CLIENT_NAME}\",\n  valid: errors.length === 0,\n  errors,\n  createdAt: new Date().toISOString()\n};\nreturn [{ json: order }];"
+      }
+    },
+    {
+      "id": "if-1",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-1",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "http-1",
+      "name": "Process Payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        920,
+        200
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stripe.com/v1/payment_intents",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${CLIENT_ID}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "amount",
+              "value": "={{ Math.round($json.total * 100) }}"
+            },
+            {
+              "name": "currency",
+              "value": "usd"
+            },
+            {
+              "name": "description",
+              "value": "Order ={{ $json.orderId }} — ${CLIENT_NAME}"
+            },
+            {
+              "name": "receipt_email",
+              "value": "={{ $json.customerEmail }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "email-1",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        200
+      ],
+      "parameters": {
+        "fromEmail": "${CLIENT_EMAIL}",
+        "toEmail": "={{ $(\"Validate Order\").first().json.customerEmail }}",
+        "subject": "Orden confirmada #={{ $(\"Validate Order\").first().json.orderId }} — ${CLIENT_NAME}",
+        "emailType": "html",
+        "message": "<h2>Gracias por tu compra!</h2><p>Hola {{ $(\"Validate Order\").first().json.customerName }},</p><p>Tu orden <strong>#{{ $(\"Validate Order\").first().json.orderId }}</strong> ha sido confirmada.</p><p>Total: ${{ $(\"Validate Order\").first().json.total }}</p><p>${CLIENT_NAME}</p>",
+        "options": {}
+      }
+    },
+    {
+      "id": "respond-1",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: $(\"Validate Order\").first().json.valid, orderId: $(\"Validate Order\").first().json.orderId, client: \"${CLIENT_NAME}\" }) }}"
+      }
+    }
+  ],
+  "connections": {
+    "Order Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Order": {
+      "main": [
+        [
+          {
+            "node": "Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid?": {
+      "main": [
+        [
+          {
+            "node": "Process Payment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Payment": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
