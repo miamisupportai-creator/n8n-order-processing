@@ -1,37 +1,32 @@
-# Guia de Setup — Order Processing Automatizado
+# Setup: E-commerce Order Automation
 
-## Descripcion
-Automatizacion del ciclo de ordenes: recepcion via webhook, validacion, procesamiento de pago con Stripe, y confirmacion por email.
+## Requisitos
+- n8n Cloud activo (plan Starter o superior)
+- Zoho CRM API key / OAuth token configurado en n8n
+- Claude API key (Anthropic) configurada en n8n
 
-## Pasos
-1. Importar `workflow.json` en n8n
-2. Configurar credencial de Stripe (Secret Key)
-3. Configurar credencial de Email
-4. Reemplazar `${CLIENT_ID}` con el Stripe Secret Key del cliente
-5. Conectar tu e-commerce para enviar ordenes al webhook
-6. Activar el workflow
+## Variables a reemplazar
+| Variable | Descripcion |
+|----------|-------------|
+| `${CLIENT_ID}` | ID único del cliente (ej: acme-corp) |
+| `${CLIENT_NAME}` | Nombre del negocio (ej: ACME Corp) |
+| `${ZOHO_OAUTH_TOKEN}` | Token OAuth de Zoho CRM |
+| `${NTFY_TOPIC}` | Topic de ntfy.sh para alertas (ej: acme-orders) |
 
-## Variables Configuradas
-| Variable | Valor |
-|----------|-------|
-| CLIENT_ID | ${CLIENT_ID} |
-| CLIENT_NAME | ${CLIENT_NAME} |
-| CLIENT_EMAIL | ${CLIENT_EMAIL} |
-| CLIENT_PHONE | ${CLIENT_PHONE} |
+## Activacion
+1. Importar `workflow.json` en n8n: **Settings → Import Workflow**
+2. Buscar y reemplazar todas las variables de la tabla anterior
+3. Configurar credenciales en cada nodo que las requiera
+4. Activar el workflow desde el toggle superior derecho
+5. Probar con un payload de prueba usando **Test Workflow**
 
-## Webhook URL
-`https://ai50m.app.n8n.cloud/webhook/order-${CLIENT_ID}`
-
-## Payload Esperado
-```json
-{
-  "order_id": "ORD-001",
-  "customer_email": "cliente@email.com",
-  "customer_name": "Nombre",
-  "items": [{ "name": "Producto", "qty": 1, "price": 99.99 }],
-  "total": 99.99
-}
+## Prueba rapida
+```bash
+curl -X POST https://TU-N8N.app.n8n.cloud/webhook/YOUR-PATH \
+  -H "Content-Type: application/json" \
+  -d '{"test": true}'
 ```
 
 ## Soporte
-contact@ai50m.com | ai50m.com
+- Documentacion n8n: https://docs.n8n.io
+- ai50m: https://ai50m.com
