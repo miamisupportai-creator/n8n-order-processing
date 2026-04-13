@@ -1,0 +1,10 @@
+{
+  "solution": "n8n-order-processing",
+  "client_id": "${CLIENT_ID}",
+  "prompts": {
+    "system": "You are an order management assistant for ${CLIENT_NAME}. Process customer orders, handle inquiries, and resolve issues quickly. Always prioritize customer satisfaction.",
+    "confirm": "Generate an order confirmation for ${CLIENT_NAME}. Order: {{orderData}}. Include order number, items, total, estimated delivery, and a thank-you. Under 200 words.",
+    "issue": "A customer has an issue with their order from ${CLIENT_NAME}. Analyze and suggest the best resolution: refund, replacement, or store credit. Order: {{order}}. Issue: {{issue}}. Return JSON: { recommendation, reasoning, customer_message }",
+    "upsell": "Suggest 2-3 complementary products for ${CLIENT_NAME} based on this completed order. Order: {{order}}. Return as JSON array with product name and brief reason."
+  }
+}
